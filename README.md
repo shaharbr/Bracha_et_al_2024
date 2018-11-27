@@ -10,9 +10,8 @@ In the codes you can find:
 
 The following data can be found on https://drive.google.com/open?id=1eT86CSqSS20FES8xOm6zeT6pe3piw7-A :
 1. data for the kinteics analysis codes (HFF_cellprofiler_outputs.zip and luhmes_cellprofiler_outputs.zip)
-2. DNA sequences used for the constructs described in the manuscript
-3. All raw microscopy files and metadata 
-5. Intrinsic disorder profiles of all tested GRA16 fusion proteins, calculated using: https://iupred2a.elte.hu
+2. All raw microscopy files and metadata 
+3. Intrinsic disorder profiles of all tested GRA16 fusion proteins, calculated using: https://iupred2a.elte.hu
 
 --
 
