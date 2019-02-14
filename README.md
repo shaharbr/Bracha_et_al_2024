@@ -1,5 +1,5 @@
-# Toxo_delivery_Bracha_et_al_2018
-Code and links to data for Bracha et al, 2018
+# Toxo_delivery_Bracha_et_al_2019
+Code and links to data for Bracha et al, 2019
 
 In the codes you can find:
 1. CellProfiller piplines for image analysis of the infected HFF and infected LUHMES neurons datasets. 
