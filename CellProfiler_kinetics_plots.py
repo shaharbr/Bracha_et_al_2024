@@ -1,15 +1,22 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
+import numpy as np
+from statsmodels.formula.api import ols
+import scipy.stats as stats
 
+# load dataframe after cleaning and organization by "HFF_CellProfiler_kinetics_analysis"
+# and "LUHMES_CellProfiler_kinetics_analysis"
+df_HFF = pd.read_csv('statdf_HFF_perimage_all_21.1.19.csv')
+df_HFF_inf = pd.read_csv('statdf_HFF_perimage_inf_21.1.19.csv')
+df_HFF_singleinf = pd.read_csv('statdf_HFF_perimage_singleinf_21.1.19.csv')
+df_HFF_singleinf_perimage = pd.read_csv('df_HFF_perimage_singleinf_21.1.19.csv')
+df_HFF_perimage = pd.read_csv('df_HFF_perimage_all_21.1.19.csv')
+df_luhmes = pd.read_csv('statdf_luhmes_perimage_all_21.1.19.csv')
 
-
-# load dataframe after cleaning and organization by "HFF_cellprofiler_output"
-df_HFF = pd.read_csv('statdf_HFF_perimage_all_25.11.csv', usecols=range(0,10))
-df_HFF_inf = pd.read_csv('statdf_HFF_perimage_inf_25.11.csv', usecols=range(0,10))
-
-df_luhmes = pd.read_csv('statdf_luhmes_perimage_all_25.11.csv', usecols=range(0,10))
-df_luhmes_inf = pd.read_csv('statdf_luhmes_perimage_inf_25.11.csv', usecols=range(0,10))
+# extract list of conditions (strains and MOIs) used
+mois = sorted(df_HFF['moi'].unique())
+strains = sorted(df_HFF['strain'].unique())
 
 # define color palette (should be colorblind-friendly)
 greens = ['#63B7B7', '#007C80', '#014D4B']
@@ -18,10 +25,7 @@ oranges = ['#FFA500', '#D38B07', '#A7710E']
 # arrange colors in list according to how they will be called for in the loop
 colors = [oranges, greens, purples]
 
-# define function for plotting a requested variable over all strains and conditions.
-# received the dataframe, the name of the column that should be plotted, the name of the column that should be
-# used as errorbars, whether yaxis should be shared, the title of the figure, the labled of the xaxis,
-# whether there should be an ylim, and the requested xticks interval.
+
 def timeplot(df, ycolumn, stdcolumn, sharey, title, ylabel, ylim, xticks, colorlist=colors):
     """"
     Plotting a requested variable over all strains and conditions.
@@ -47,13 +51,14 @@ def timeplot(df, ycolumn, stdcolumn, sharey, title, ylabel, ylim, xticks, colorl
     else:
         f, axes = plt.subplots(1, numstrains, sharey=sharey, sharex=True, figsize=(9, 6))
     plt.rcParams['legend.handlelength'] = 0
-    # in order to get around matplotlib's deafult behaviour of turning a list of "one subplot" 
-    # into a non-indexable variable, I put it inside a list again so that 
+    # in order to get around matplotlib's deafult behaviour of turning a list of "one subplot"
+    # into a non-indexable variable, I put it inside a list again so that
     # I could call it by an index in the loop below
     if numstrains == 1 :
         axes = [axes]
     for i in range(numstrains):
         for m in range(len(mois)):
+            # extract the dataframe for only one strain and moi
             df_strain_moi = df.loc[(df['strain'] == strains[i]) & (df['moi'] == mois[m])]
             # plot a line plot for each moi, for each strain subplot. plot the variable defined in the input.
             df_strain_moi.plot(x='timepoint', y=ycolumn, yerr=stdcolumn, capsize=3, capthick=1, linewidth=2,
@@ -101,20 +106,82 @@ def timeplot(df, ycolumn, stdcolumn, sharey, title, ylabel, ylim, xticks, colorl
     return f
 
 
-
-
-f_HFF_nucintens = timeplot(df_HFF_inf, ycolumn='mean_intens', stdcolumn='std_intens', sharey=False,
+# plot intensity of nuclear localization in single vacuole-infected cells over time
+f_HFF_nucintens = timeplot(df_HFF_singleinf, ycolumn='mean_intens', stdcolumn='std_intens', sharey=False,
                            title='Host nuclear localization', ylabel='Normalized mean\n' + r'$\alpha$HA fluorescence (AFU)',
                            ylim=False, xticks=8, colorlist=colors)
+# plot infection rate over time (for HFF and LUHMES)
 f_HFF_infection = timeplot(df_HFF, ycolumn='mean_percentinf', stdcolumn='std_percentinf', sharey=True,
                            title='Infection rate', ylabel='Infected cells (%)',
                            ylim=(-10, 100), xticks=8, colorlist=colors)
-f_HFF_posnuc = timeplot(df_HFF, ycolumn='mean_percentposnuc', stdcolumn='std_percentposnuc', sharey=True,
-                        title='Protein-delivered nuclei', ylabel='Protein-delivered Nnclei (%)',
-                        ylim=(-10, 100), xticks=8, colorlist=colors)
 f_luhmes_infection = timeplot(df_luhmes, ycolumn='mean_percentinf', stdcolumn='std_percentinf', sharey=True,
                               title='Infection rate', ylabel='Infected cells (%)',
                               ylim=(-10, 100), xticks=6, colorlist=colors)
+# plot nuclear delivery over time (% of nuclei in infected population with nuclear intensity above background)
+f_HFF_posnuc = timeplot(df_HFF_inf, ycolumn='mean_percentposnuc', stdcolumn='std_percentposnuc', sharey=True,
+                        title='Protein-delivered nuclei', ylabel='Protein-delivered Nuclei (%)',
+                        ylim=(-10, 100), xticks=8, colorlist=colors)
+# plot mean number of intracellular vacuoles in infected cells over time
+f_HFF_count = timeplot(df_HFF_inf, ycolumn='mean_count', stdcolumn='std_count', sharey=True,
+                        title='Parasite vacuoles per cell', ylabel='Parasite vacuoles per cell',
+                        ylim=(0, 5), xticks=8, colorlist=colors)
+# plot mean area of parasitophorous vacuoles in single-infected cells over time
+f_HFF_PVarea = timeplot(df_HFF_singleinf.loc[df_HFF_singleinf['timepoint'] > 0], ycolumn='mean_PVarea', stdcolumn='std_PVarea', sharey=True,
+                        title='Size of parasite vacuoles', ylabel='Area ($\mu m^2$)',
+                        ylim=(0, 160), xticks=8, colorlist=colors)
+
+
+# Analysis of the increase in parasitophorous vacuole size over time. Analyze only single vacuole-infected cells
+# and remove timepoint 0 from dataset (where any detected vacuole is assumed to be an artefact)
+df_PVarea = df_HFF_singleinf_perimage.loc[df_HFF_singleinf_perimage['timepoint'] > 0]
+
+# extract doubling time from the slope of the linear regression line fit to log2 of vacuole size over time
+# (not including timepoint 0 where there are no parasites)
+df_PVarea['mean_PVarea_log2'] = df_PVarea['mean_PVarea'].apply(np.log2)
+
+# fit regression lines for the doubling time in each condition (strain and MOI) separately
+for strain in strains:
+    for moi in mois:
+        df_strain_moi = df_PVarea.loc[(df_PVarea['strain'] == strain) & (df_PVarea['moi'] == moi)]
+        slope, intercept, r_value, p_value, std_err = stats.linregress(df_strain_moi['timepoint'],df_strain_moi['mean_PVarea_log2'])
+        print(strain, moi, slope, intercept, r_value, p_value, std_err)
+
+# fit regression line for the doubling time in all vacuoles, pooled together (no separation to conditoins)
+slope, intercept, r_value, p_value, std_err = stats.linregress(df_PVarea['timepoint'], df_PVarea['mean_PVarea_log2'])
+print('for all data', slope, intercept, r_value, p_value, std_err)
+
+
+
+# ANOVA model for mean_PVarea_log2
+model = ols('mean_PVarea_log2 ~ timepoint * moi * C(strain)', df_PVarea).fit()
+print('mean_PVarea_log2')
+print(f"Overall model F({model.df_model: .0f},{model.df_resid: .0f}) = {model.fvalue: .3f}, p = {model.f_pvalue: .4f}")
+print(model.summary())
+
+# ANOVA model for mean_percentinf
+model = ols('mean_percentinf ~ timepoint * moi * C(strain)', df_HFF_perimage).fit()
+print('mean_percentinf')
+print(f"Overall model F({model.df_model: .0f},{model.df_resid: .0f}) = {model.fvalue: .3f}, p = {model.f_pvalue: .4f}")
+print(model.summary())
+
+# ANOVA model for mean_percentposnuc
+model = ols('mean_percentposnuc ~ timepoint * moi * C(strain)', df_HFF_perimage).fit()
+print('mean_percentposnuc')
+print(f"Overall model F({model.df_model: .0f},{model.df_resid: .0f}) = {model.fvalue: .3f}, p = {model.f_pvalue: .4f}")
+print(model.summary())
+
+# ANOVA model for mean_intens
+model = ols('mean_intens ~ timepoint * moi * C(strain)', df_HFF_perimage).fit()
+print('mean_intens')
+print(f"Overall model F({model.df_model: .0f},{model.df_resid: .0f}) = {model.fvalue: .3f}, p = {model.f_pvalue: .4f}")
+print(model.summary())
+
+# ANOVA model for mean_count
+model = ols('mean_count ~ timepoint * moi * C(strain)', df_HFF_perimage).fit()
+print('mean_count')
+print(f"Overall model F({model.df_model: .0f},{model.df_resid: .0f}) = {model.fvalue: .3f}, p = {model.f_pvalue: .4f}")
+print(model.summary())
+
 
 
 plt.show()
