@@ -91,7 +91,7 @@ y = [proteins[prot]['nucintens'] for prot in proteins]
 slope, intercept, r_value, p_value, std_err = stats.linregress(x, y)
 
 # generate figure showing the correlation between intrinsic disorder score and nuclear localization
-f1, ax1 = plt.subplots(1, 1, figsize=(10, 10))
+f1, ax1 = plt.subplots(1, 1, figsize=(20, 10))
 # plot the calculated regression line
 ax1.plot(x, intercept + slope*np.array(x), 'gray', label='fitted line')
 # scatter plot all the data points
